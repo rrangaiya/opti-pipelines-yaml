@@ -1,0 +1,105 @@
+# Pipeline to deploy to Integration DXP environment using Azure App Service Deploy task
+# Author: Ron Rangaiya
+# -----------------------------
+
+# Set the pipeline build number format
+name: 'CI-$(Date:yyyyMMdd).$(Rev:r)'
+
+trigger:
+- master
+
+pool:
+  vmimage: 'windows-2019'
+  demands:
+  - npm
+  - msbuild
+  - visualstudio
+  - vstest
+
+variables:
+- template: variables.yml
+- name: azureSubscription
+  value: '[Azure subscription service connection name]'
+- name: webAppName
+  value: '[Integration web app name]'
+
+stages:
+- stage: CI
+  jobs:
+  - job: CI
+    displayName: 'Build & package'
+    steps:
+    - task: NuGetToolInstaller@1
+      displayName: "Install Nuget"
+      inputs:
+        versionSpec: 5.4.0
+
+    - task: NuGetCommand@2
+      displayName: 'NuGet restore'
+      inputs:
+        restoreSolution: '$(solution)'
+        feedsToUse: config
+        nugetConfigPath: '$(nugetConfig)'
+        
+# Run any npm commands to build UI artifacts
+#    - task: Npm@1
+#      displayName: 'Build UI'
+#      inputs:
+#        command: custom
+#        workingDir: ''
+#        verbose: false
+#        customCommand: 'run build'
+
+    - task: VSBuild@1
+      displayName: "Build solution"
+      inputs:
+        solution: '$(solution)'
+        msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.ArtifactStagingDirectory)"'
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+
+    - task: VSTest@2
+      displayName: 'Test assemblies'
+      inputs:
+        testAssemblyVer2: |
+          **\$(BuildConfiguration)\*test*.dll
+          !**\obj\**
+        platform: '$(buildPlatform)'
+        configuration: '$(buildConfiguration)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish artifact'
+      inputs:
+        PathtoPublish: '$(build.ArtifactStagingDirectory)'
+        ArtifactName: '$(artifactName)'
+        publishLocation: 'Container'
+
+- stage: Integration 
+  jobs:
+    # Add a Deployment job. 
+    # Artifacts are automatically downloaded in deployment jobs. To disable use -download: none
+  - deployment: DeployApp
+    displayName: 'Deploy to Integration'
+    variables: 
+      # Explicitly set the EnvironmentName variable in multi-stage YAML to ensure environment config transform is applied automatically
+      Release.EnvironmentName: 'Integration'
+    # Creates an environment if it doesn’t exist
+    environment: 'Integration'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy App'
+            inputs:
+              ConnectionType: 'AzureRM'
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: '$(webAppName)'
+              packageForLinux: '$(Pipeline.Workspace)/$(artifactName)/*.zip'
+              enableCustomDeployment: true
+              DeploymentType: 'webDeploy'
+              RemoveAdditionalFilesFlag: true
+              ExcludeFilesFromAppDataFlag: true
+              enableXmlTransform: true
+              enableXmlVariableSubstitution: true

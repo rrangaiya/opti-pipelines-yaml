@@ -1,0 +1,11 @@
+# Common variables
+variables:
+  solution: '**/*.sln'
+  nugetConfig: 'src/NuGet.Config'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'  
+  # Prefix for the Nuget package name e.g. customer or project name
+  packageNamePrefix: '[App name]' 
+  appVersion: '$(Build.BuildNumber)'
+  artifactName: 'Deployment-Package'
+
