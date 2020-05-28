@@ -5,7 +5,7 @@ The pipelines are ideal for projects using a trunk based branching strategy, how
 
 ## Continuous Integration
 
-The Integration pipeline is setup to run when code is merged to `master`. It creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. The main reason for this approach is to allow for a faster deployment to this environment.
+The `Integration` pipeline is setup to run when code is merged to `master`. It creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. The main reason for this approach is to allow for a faster deployment to this environment.
 
 Create a service connection to your DXP Azure instance on Azure DevOps. The service principal details required for the connection can be requested from Episerver Managed Services.
 
@@ -26,6 +26,7 @@ Add the following variables to the Release pipeline for the Deployment API crede
 - ProjectId
 - ApiKey
 - ApiSecret (secret variable)
+- UseMaintenancePage
 
 ## Environments
 
