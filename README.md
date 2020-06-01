@@ -16,12 +16,6 @@ The `Release` pipeline is used to deploy planned releases. It
 - creates a Nuget package and uploads it to the Episerver DXP for deployment. The package name will be in the format _[app name].cms.app.<releasebranchname.buildnumber.revision>.nupkg_, e.g. customer.cms.app.1.0.20200527.1.nupkg
 - allows for staged deployments to Preproduction and Production environments (upon approval) 
 
-### Web.config transforms
-
-The `msbuild` task in the pipelines will apply the Release transformation on the web.config file.
-
-When deploying to the respective environments, the App Service Deploy task (`Integration` pipeline) and the DXP Deployment API (`Release` pipeline) will apply environment transform files on the web.config in the Web/Nuget package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
-
 ### Variables
 
 Add the following variables to the Release pipeline for the Deployment API credentials (from the DXP Portal):
@@ -29,6 +23,12 @@ Add the following variables to the Release pipeline for the Deployment API crede
 - ApiKey
 - ApiSecret (secret variable)
 - UseMaintenancePage
+
+## Web.config transforms
+
+The `msbuild` task in the pipelines will apply the Release transformation on the web.config file.
+
+When deploying to the respective environments, the App Service Deploy task (`Integration` pipeline) and the DXP Deployment API (`Release` pipeline) will apply environment transform files on the web.config in the Web/Nuget package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
 
 ## Environments
 
