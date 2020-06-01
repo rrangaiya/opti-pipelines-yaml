@@ -18,7 +18,9 @@ The `Release` pipeline is used to deploy planned releases. It
 
 ### Web.config transforms
 
-The DXP Deployment API will apply environment transform files on the web.config in the Nuget package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
+The `msbuild` task in the pipelines will apply the Release transformation on the web.config file.
+
+When deploying to the respective environments, the App Service Deploy task (`Integration` pipeline) and the DXP Deployment API (`Release` pipeline) will apply environment transform files on the web.config in the Web/Nuget package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
 
 ### Variables
 
