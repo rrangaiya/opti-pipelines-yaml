@@ -3,7 +3,7 @@
 # -----------------------------
 
 # Set the pipeline build number format
-name: 'CI-$(Date:yyyyMMdd).$(Rev:r)'
+name: 'CI.$(Date:yyyyMMdd).$(Rev:r)'
 
 trigger:
 - master
@@ -83,7 +83,7 @@ stages:
     variables: 
       # Explicitly set the EnvironmentName variable in multi-stage YAML to ensure environment config transform is applied automatically
       Release.EnvironmentName: 'Integration'
-    # Creates an environment if it doesn’t exist
+    # Creates an environment if it doesnâ€™t exist
     environment: 'Integration'
     strategy:
       runOnce:
