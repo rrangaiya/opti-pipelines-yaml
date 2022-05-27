@@ -1,13 +1,15 @@
-# Episerver DXP YAML Pipelines
+# Optimizely (formerly Episerver) DXP YAML Pipelines
 Reusable multi-stage YAML pipelines to setup CI/CD for Episerver DXP deployments
 
 The pipelines are ideal for projects using a trunk based branching strategy, however the triggers can be tweaked to work with other branching models.
 
 ## Continuous Integration
 
-The `Integration` pipeline is setup to run when code is merged to `master`. It creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. The main reason for this approach is to allow for a faster deployment to this environment.
+**Update** The `Integration` pipeline now supports direct deploy to the Integration environment using the Deployment API code package approach. This is the recommended approach to deploying to Integration.
 
-Create a service connection to your DXP Azure instance on Azure DevOps. The service principal details required for the connection can be requested from Episerver Managed Services.
+The `Integration-WebDeploy` pipeline creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. Create a service connection to your DXP Azure instance on Azure DevOps. The service principal details required for the connection can be requested from Episerver Managed Services. This pipeline is provided for legacy purposes.
+
+The Integration pipelines are triggered when code is merged to `master`.
 
 ## Release
 
@@ -18,7 +20,7 @@ The `Release` pipeline is used to deploy planned releases. It
 
 ### Variables
 
-Add the following variables to the Release pipeline for the Deployment API credentials (from the DXP Portal):
+Create variable groups 'dxp-inte' and 'dxp-release' for the 2 pipelines respectively, with the following variables (Deployment API credentials are generated from the DXP Portal):
 - ProjectId
 - ApiKey
 - ApiSecret (secret variable)
@@ -28,7 +30,7 @@ Add the following variables to the Release pipeline for the Deployment API crede
 
 The `msbuild` task in the pipelines will apply the Release transformation on the web.config file.
 
-When deploying to the respective environments, the App Service Deploy task (`Integration` pipeline) and the DXP Deployment API (`Release` pipeline) will apply environment transform files on the web.config in the Web/Nuget package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
+When deploying to the respective environments, the DXP Deployment API will apply the environment transform files on the web.config in the code package. Set the BuildAction for environment transform files to `Content` so that they are included in the package.
 
 ## Environments
 
