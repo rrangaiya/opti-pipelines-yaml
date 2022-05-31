@@ -1,5 +1,5 @@
 # Optimizely (formerly Episerver) DXP YAML Pipelines
-Reusable multi-stage YAML pipelines to setup CI/CD for Episerver DXP deployments
+Reusable multi-stage YAML pipelines to setup CI/CD for Optimizely DXP deployments
 
 The pipelines are ideal for projects using a trunk based branching strategy, however the triggers can be tweaked to work with other branching models.
 
@@ -17,6 +17,7 @@ The `Release` pipeline is used to deploy planned releases. It
 - is triggered on any change to `release/*` branch. Use consistent naming convention for release branch name e.g. `release/1.0` for deployment history purposes.
 - creates a Nuget package and uploads it to the Episerver DXP for deployment. The package name will be in the format _[app name].cms.app.<releasebranchname.buildnumber.revision>.nupkg_, e.g. customer.cms.app.1.0.20200527.1.nupkg
 - allows for staged deployments to Preproduction and Production environments (upon approval) 
+- supports Smooth deployments / Zero downtime deployments
 
 ### Variables
 
@@ -24,7 +25,6 @@ Create variable groups 'dxp-inte' and 'dxp-release' for the 2 pipelines respecti
 - ProjectId
 - ApiKey
 - ApiSecret (secret variable)
-- UseMaintenancePage
 
 ## Web.config transforms
 
@@ -34,5 +34,7 @@ When deploying to the respective environments, the DXP Deployment API will apply
 
 ## Environments
 
-Deployments history can be viewed from the _Pipelines -> Environments_ page on Azure DevOps. The deployed version <releasebranchname.buildnumber.revision> will be displayed against the respective environments
+Deployments history can be viewed from the _Pipelines -> Environments_ page on Azure DevOps. The deployed version <releasebranchname.buildnumber.revision> will be displayed against the respective environments.
+
+Approvals can be setup on the Preproduction and Production environments to ensure approvers grant approval before deployment to the respective environment. 
 
