@@ -1,5 +1,5 @@
-# Pipeline to deploy to DXP environments using Deployment API
-# Requires the following variables to be added to the pipeline from Azure DevOps UI
+# Pipeline to deploy to DXP Preproduction and Production environments using Deployment API
+# Expects the following variables in a variable group named `dxp-release`
 #    - ApiKey
 #    - ApiSecret
 #    - ProjectId
@@ -21,8 +21,23 @@ pool:
   - visualstudio
   - vstest
 
+parameters:
+- name: useMaintenancePage
+  displayName: Use Maintenance Page
+  type: boolean
+  default: false  
+- name: smoothDeployMode
+  displayName: Smooth Deploy Mode 
+  type: string
+  default: n/a
+  values:
+  - n/a
+  - ReadOnly
+  - ReadWrite
+  
 variables:
 - template: variables.yml
+- group: dxp-release
 
 stages:
 - stage: Package
@@ -55,7 +70,15 @@ stages:
       displayName: "Build solution"
       inputs:
         solution: '$(solution)'
-        msbuildArgs: '/p:DeployOnBuild=True;DeployDefaultTarget=WebPublish;WebPublishMethod=FileSystem;PublishProvider=FileSystem;LastUsedBuildConfiguration=Release;ExcludeApp_Data=True;DeleteExistingFiles=True;publishUrl=$(build.ArtifactStagingDirectory)\PackageContent\wwwroot'
+        msbuildArgs: 
+          /p:DeployOnBuild=True
+          /p:DeployDefaultTarget=WebPublish
+          /p:WebPublishMethod=FileSystem
+          /p:PublishProvider=FileSystem
+          /p:LastUsedBuildConfiguration=Release
+          /p:ExcludeApp_Data=True
+          /p:DeleteExistingFiles=True
+          /p:publishUrl=$(build.ArtifactStagingDirectory)\PackageContent\wwwroot'
         platform: '$(buildPlatform)'
         configuration: '$(buildConfiguration)'
 
@@ -112,7 +135,7 @@ stages:
     # Artifacts are automatically downloaded in deployment jobs. To disable use -download: none
   - deployment: DeployApp
     displayName: 'Deploy to Preproduction' 
-    # Creates an environment if it doesn’t exist
+    # Creates an environment if it doesnâ€™t exist
     environment: 'Preproduction'
     strategy:
       runOnce:
@@ -137,12 +160,22 @@ stages:
                 
                 echo "Starting deployment using package $packageName" 
 
-                $params = @{
-                  DeploymentPackage = $packageName
-                  TargetEnvironment = 'Preproduction'
-                  UseMaintenancePage = $(UseMaintenancePage)
-                  Wait = $true
-                }
+                if (${{ parameters.smoothDeployMode }} -eq $null -or ${{ parameters.smoothDeployMode }} -eq "n/a") {
+                  $params = @{
+                    DeploymentPackage = $packageName
+                    TargetEnvironment = 'Preproduction'
+                    UseMaintenancePage = $(UseMaintenancePage)
+                    Wait = $true
+                  }
+                } else {
+                    $params = @{
+                      DeploymentPackage = $packageName
+                      TargetEnvironment = 'Preproduction'
+                      UseMaintenancePage = $(UseMaintenancePage)
+                      Wait = $true
+                      ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}
+                    }
+                }                
 
                 $deploy = Start-EpiDeployment @params
                 
@@ -200,7 +233,7 @@ stages:
     # Artifacts are automatically downloaded in deployment jobs. To disable use -download: none
   - deployment: DeployApp
     displayName: 'Deploy to Production'  
-    # Creates an environment if it doesn’t exist
+    # Creates an environment if it doesnâ€™t exist
     environment: 'Production'
     strategy:
       runOnce:
@@ -225,12 +258,22 @@ stages:
                 
                 echo "Starting deployment using package $packageName" 
 
-                $params = @{
-                  DeploymentPackage = $packageName
-                  TargetEnvironment = 'Production'
-                  UseMaintenancePage = $(UseMaintenancePage)
-                  Wait = $true
-                }
+                if (${{ parameters.smoothDeployMode }} -eq $null -or ${{ parameters.smoothDeployMode }} -eq "n/a") {
+                  $params = @{
+                    DeploymentPackage = $packageName
+                    TargetEnvironment = 'Preproduction'
+                    UseMaintenancePage = $(UseMaintenancePage)
+                    Wait = $true
+                  }
+                } else {
+                    $params = @{
+                      DeploymentPackage = $packageName
+                      TargetEnvironment = 'Preproduction'
+                      UseMaintenancePage = $(UseMaintenancePage)
+                      Wait = $true
+                      ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}
+                    }
+                }             
 
                 $deploy = Start-EpiDeployment @params
                 
