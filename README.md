@@ -1,5 +1,5 @@
 # Optimizely (formerly Episerver) DXP YAML Pipelines
-Reusable multi-stage YAML pipelines to setup CI/CD for Optimizely DXP deployments
+Reusable multi-stage YAML pipelines to setup CI/CD for Optimizely DXP deployments using Deployment API
 
 The pipelines are ideal for projects using a trunk based branching strategy, however the triggers can be tweaked to work with other branching models.
 
@@ -18,6 +18,7 @@ The `Release` pipeline is used to deploy planned releases. It
 - creates a Nuget package and uploads it to the Episerver DXP for deployment. The package name will be in the format _[app name].cms.app.<releasebranchname.buildnumber.revision>.nupkg_, e.g. customer.cms.app.1.0.20200527.1.nupkg
 - allows for staged deployments to Preproduction and Production environments (upon approval) 
 - supports Smooth deployments / Zero downtime deployments
+- allows for manual validation after Production slot deployment
 
 ### Variables
 
@@ -37,4 +38,9 @@ When deploying to the respective environments, the DXP Deployment API will apply
 Deployments history can be viewed from the _Pipelines -> Environments_ page on Azure DevOps. The deployed version <releasebranchname.buildnumber.revision> will be displayed against the respective environments.
 
 Approvals can be setup on the Preproduction and Production environments to ensure approvers grant approval before deployment to the respective environment. 
+
+## Limitations
+
+- The pipelines currently only creates and deploys CMS code package however can be easily extended for Commerce pacakges
+- Build process is targeted for CMS 11
 
