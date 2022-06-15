@@ -3,6 +3,7 @@
 #    - ApiKey
 #    - ApiSecret
 #    - ProjectId
+#    - ValidationNotificationSubscribers (list of email addresses who should receive notification for manual validation of Production deployment)
 #
 # Author: Ron Rangaiya
 # -----------------------------
@@ -26,6 +27,10 @@ parameters:
   displayName: Use Maintenance Page
   type: boolean
   default: false  
+- name: manualValidation
+  displayName: Perform Manual Validation (Prod)
+  type: boolean
+  default: true
 - name: smoothDeployMode
   displayName: Smooth Deploy Mode 
   type: string
@@ -78,7 +83,7 @@ stages:
           /p:LastUsedBuildConfiguration=Release
           /p:ExcludeApp_Data=True
           /p:DeleteExistingFiles=True
-          /p:publishUrl=$(build.ArtifactStagingDirectory)\PackageContent\wwwroot'
+          /p:publishUrl=$(build.ArtifactStagingDirectory)\PackageContent\wwwroot
         platform: '$(buildPlatform)'
         configuration: '$(buildConfiguration)'
 
@@ -164,14 +169,14 @@ stages:
                   $params = @{
                     DeploymentPackage = $packageName
                     TargetEnvironment = 'Preproduction'
-                    UseMaintenancePage = $(UseMaintenancePage)
+                    UseMaintenancePage = ${{ parameters.useMaintenancePage }}
                     Wait = $true
                   }
                 } else {
                     $params = @{
                       DeploymentPackage = $packageName
                       TargetEnvironment = 'Preproduction'
-                      UseMaintenancePage = $(UseMaintenancePage)
+                      UseMaintenancePage = ${{ parameters.useMaintenancePage }}
                       Wait = $true
                       ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}
                     }
@@ -229,90 +234,115 @@ stages:
 
 - stage: Production 
   jobs:
+  - job : jDeploySlot
+    displayName: 'Deploy to slot'    
+    steps:
+    - checkout: none
+
+    - task: PowerShell@2
+      name: deployToSlotTask
+      displayName: 'Deploy to slot'
+      env:
+        API_SECRET: $(ApiSecret)
+      inputs:
+        targetType: 'inline'
+        script: |
+          if (-not (Get-Module -Name EpiCloud -ListAvailable)) {
+              Install-Module EpiCloud -Scope CurrentUser -Force
+          }
+
+          Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
+
+          $packageName = "$(appName).cms.app.$(appVersion).nupkg"
+                
+          echo "Starting deployment using package $packageName" 
+
+          if (${{ parameters.smoothDeployMode }} -eq $null -or ${{ parameters.smoothDeployMode }} -eq "n/a") {
+            $params = @{
+              DeploymentPackage = $packageName
+              TargetEnvironment = 'Preproduction'
+              UseMaintenancePage = ${{ parameters.useMaintenancePage }}
+              Wait = $true
+            }
+          } else {
+            $params = @{
+              DeploymentPackage = $packageName
+              TargetEnvironment = 'Preproduction'
+              UseMaintenancePage = ${{ parameters.useMaintenancePage }}
+              Wait = $true
+              ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}
+            }
+          }             
+
+          $deploy = Start-EpiDeployment @params
+                
+          echo "DeploymentId - $($deploy.id)" 
+          echo "##vso[task.setvariable variable=deploymentId;isOutput=true]$($deploy.id)"
+
+    - task: PowerShell@2
+      displayName: 'Validate slot'
+      env:
+        API_SECRET: $(ApiSecret)
+      inputs:
+        targetType: 'inline'
+        script: |
+          Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
+                
+          $deploy = Get-EpiDeployment -Id $(deployToSlotTask.deploymentId)
+
+          if ($deploy.status -eq 'AwaitingVerification'){
+            $response = Invoke-WebRequest -Uri $deploy.validationLinks[0]
+
+            if ($response.StatusCode -ne 200){
+              echo "Smoke test of slot url failed"
+              exit 1
+            }
+          }    
+          
+    - task: PowerShell@2
+      displayName: 'Reset'
+      env:
+        API_SECRET: $(ApiSecret)
+      condition: failed()
+      inputs:
+        targetType: 'inline'
+        script: |
+          Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
+                
+          Reset-EpiDeployment -Id $(deployToSlotTask.deploymentId) -Wait
+
+  # Agentless job to allow for manual validation before completing.
+  - job: jManualValidation
+    displayName: 'Wait for manual validation'
+    dependsOn: jDeploySlot
+    condition: and(succeeded(), eq('${{ parameters.manualValidation }}', true))
+    pool: server
+    timeoutInMinutes: 2880 # 2 days
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # 1 day
+      inputs:
+        notifyUsers: $(ValidationNotificationSubscribers)
+        instructions: 'Please validate the slot and resume'
+        onTimeout: 'reject'
+
     # Add a Deployment job. 
     # Artifacts are automatically downloaded in deployment jobs. To disable use -download: none
   - deployment: DeployApp
-    displayName: 'Deploy to Production'  
+    displayName: 'Deploy to Production'
+    dependsOn:
+    - jDeploySlot
+    - jManualValidation
+    variables:
+      # Map the deploymentId from DeploySlot job
+      deploymentId: $[ dependencies.jDeploySlot.outputs['deployToSlotTask.deploymentId'] ] 
     # Creates an environment if it doesn’t exist
     environment: 'Production'
     strategy:
       runOnce:
         deploy:
           steps:
-          - download: none
-
-          - task: PowerShell@2
-            displayName: 'Deploy to slot'
-            env:
-              API_SECRET: $(ApiSecret)
-            inputs:
-              targetType: 'inline'
-              script: |
-                if (-not (Get-Module -Name EpiCloud -ListAvailable)) {
-                    Install-Module EpiCloud -Scope CurrentUser -Force
-                }
-
-                Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
-
-                $packageName = "$(appName).cms.app.$(appVersion).nupkg"
-                
-                echo "Starting deployment using package $packageName" 
-
-                if (${{ parameters.smoothDeployMode }} -eq $null -or ${{ parameters.smoothDeployMode }} -eq "n/a") {
-                  $params = @{
-                    DeploymentPackage = $packageName
-                    TargetEnvironment = 'Preproduction'
-                    UseMaintenancePage = $(UseMaintenancePage)
-                    Wait = $true
-                  }
-                } else {
-                    $params = @{
-                      DeploymentPackage = $packageName
-                      TargetEnvironment = 'Preproduction'
-                      UseMaintenancePage = $(UseMaintenancePage)
-                      Wait = $true
-                      ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}
-                    }
-                }             
-
-                $deploy = Start-EpiDeployment @params
-                
-                echo "DeploymentId - $($deploy.id)" 
-                echo "##vso[task.setvariable variable=deploymentId;]$($deploy.id)"
-
-          - task: PowerShell@2
-            displayName: 'Validate slot'
-            env:
-              API_SECRET: $(ApiSecret)
-            inputs:
-              targetType: 'inline'
-              script: |
-                Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
-                
-                $deploy = Get-EpiDeployment -Id $env:DeploymentId
-
-                if ($deploy.status -eq 'AwaitingVerification'){
-                  $response = Invoke-WebRequest -Uri $deploy.validationLinks[0]
-
-                  if ($response.StatusCode -ne 200){
-                    echo "Smoke test of slot url failed"
-                    exit 1
-                  }
-                }            
-
-          - task: PowerShell@2
-            displayName: 'Reset'
-            env:
-              API_SECRET: $(ApiSecret)
-            condition: failed()
-            inputs:
-              targetType: 'inline'
-              script: |
-                Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
-                
-                Reset-EpiDeployment -Id $env:DeploymentId -Wait
-
-           # TODO - add Manual intervention task before completing Production deployment (feature currently not supported in YAML pipelines, in the roadmap for Q2 2020)
+          - download: none  
 
           - task: PowerShell@2
             displayName: 'Complete deployment'
@@ -323,4 +353,4 @@ stages:
               script: |
                 Connect-EpiCloud -ClientKey $(ApiKey) -ClientSecret $env:API_SECRET -ProjectId $(ProjectId)
                 
-                Complete-EpiDeployment -Id $env:DeploymentId -Wait
+                Complete-EpiDeployment -Id $(deploymentId) -Wait
