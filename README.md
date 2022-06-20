@@ -7,7 +7,7 @@ The pipelines are ideal for projects using a trunk based branching strategy, how
 
 **Update** The `Integration` pipeline now supports direct deploy to the Integration environment using the Deployment API code package approach. This is the recommended approach to deploying to Integration.
 
-The `Integration-WebDeploy` pipeline creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. Create a service connection to your DXP Azure instance on Azure DevOps. The service principal details required for the connection can be requested from Episerver Managed Services. This pipeline is provided for legacy purposes.
+The `Integration-WebDeploy` pipeline creates a web package and deploys to the Integration environment using the Azure App Service Deploy task. Create a service connection to your DXP Azure instance on Azure DevOps. The service principal details required for the connection can be requested from Episerver Managed Services. This pipeline is provided for legacy purposes and can be repurposed to deploy to additional DXP environments.
 
 The Integration pipelines are triggered when code is merged to `master`.
 
@@ -15,14 +15,14 @@ The Integration pipelines are triggered when code is merged to `master`.
 
 The `Release` pipeline is used to deploy planned releases. It 
 - is triggered on any change to `release/*` branch. Use consistent naming convention for release branch name e.g. `release/1.0` for deployment history purposes.
-- creates a Nuget package and uploads it to the Episerver DXP for deployment. The package name will be in the format _[app name].cms.app.<releasebranchname.buildnumber.revision>.nupkg_, e.g. customer.cms.app.1.0.20200527.1.nupkg
+- creates a Nuget package and uploads it to the Optimizely DXP for deployment. The package name will be in the format _[app name].cms.app.<releasebranchname.buildnumber.revision>.nupkg_, e.g. customer.cms.app.1.0.20200527.1.nupkg
 - allows for staged deployments to Preproduction and Production environments (upon approval) 
 - supports Smooth deployments / Zero downtime deployments
 - allows for manual validation after Production slot deployment
 
 ### Variables
 
-Create variable groups 'dxp-inte' and 'dxp-release' for the 2 pipelines respectively, with the following variables (Deployment API credentials are generated from the DXP Portal):
+Create variable groups 'dxp-inte' and 'dxp-release' for the 2 pipelines respectively, with the following variables (Deployment API credentials can be generated from the DXP Portal):
 - ProjectId
 - ApiKey
 - ApiSecret (secret variable)
@@ -42,5 +42,5 @@ Approvals can be setup on the Preproduction and Production environments to ensur
 ## Limitations
 
 - The pipelines currently only creates and deploys CMS code package however can be easily extended for Commerce pacakges
-- Build process is targeted for CMS 11
+- Build process currently doesn't support .Net5 / CMS12
 
