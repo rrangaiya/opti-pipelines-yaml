@@ -1,4 +1,7 @@
 # Optimizely (formerly Episerver) DXP YAML Pipelines
+
+**For ASP.NET 5+ / Optimizely CMS 12+, see https://github.com/rrangaiya/opti-ci-cd**
+
 Reusable multi-stage YAML pipelines to setup CI/CD for Optimizely DXP deployments using Deployment API
 
 The pipelines are ideal for projects using a trunk based branching strategy, however the triggers can be tweaked to work with other branching models.
@@ -20,7 +23,7 @@ The `Release` pipeline is used to deploy planned releases. It
 - supports Smooth deployments / Zero downtime deployments
 - allows for manual validation after Production slot deployment
 
-### Variables
+## Variables
 
 Create variable groups 'dxp-inte' and 'dxp-release' for the 2 pipelines respectively, with the following variables (Deployment API credentials can be generated from the DXP Portal):
 - ProjectId
