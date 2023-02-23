@@ -260,14 +260,14 @@ stages:
           if (${{ parameters.smoothDeployMode }} -eq $null -or ${{ parameters.smoothDeployMode }} -eq "n/a") {
             $params = @{
               DeploymentPackage = $packageName
-              TargetEnvironment = 'Preproduction'
+              TargetEnvironment = 'Production'
               UseMaintenancePage = ${{ parameters.useMaintenancePage }}
               Wait = $true
             }
           } else {
             $params = @{
               DeploymentPackage = $packageName
-              TargetEnvironment = 'Preproduction'
+              TargetEnvironment = 'Production'
               UseMaintenancePage = ${{ parameters.useMaintenancePage }}
               Wait = $true
               ZeroDowntimeMode = ${{ parameters.smoothDeployMode }}

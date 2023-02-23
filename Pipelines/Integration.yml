@@ -152,7 +152,7 @@ stages:
                 
                 $params = @{
                   DeploymentPackage = $packageName
-                  TargetEnvironment = 'Preproduction'
+                  TargetEnvironment = 'Integration'
                   UseMaintenancePage = $false
                   Wait = $true
                 }
